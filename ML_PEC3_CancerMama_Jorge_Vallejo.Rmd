@@ -111,3 +111,17 @@ El dataset está compuesto por:
 str(raw_dataframe,
     vec.len = 2)
 ```
+
+## Tipos de variables
+```{r class of variables, fig.align='left'}
+knitr::kable(table(unlist(lapply(raw_dataframe, class))),
+             col.names = c("Clase", "Frecuencia"),
+             caption = '')
+```
+
+## Otras características de interés
+```{r NAs y rangos en una tabla}
+
+```
+
+
