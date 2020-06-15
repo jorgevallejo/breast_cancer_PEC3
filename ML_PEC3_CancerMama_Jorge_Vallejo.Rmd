@@ -1,5 +1,5 @@
 ---
-  title: "Cáncer de mama"
+title: "Cáncer de mama"
 subtitle: "Machine Learning - PEC 3"
 author: "Jorge Vallejo Ortega"
 date: '`r format(Sys.Date(),"%e de %B, %Y")`'
@@ -12,12 +12,11 @@ toc: true
 # Next code for knitting more than one type of document automatically comes from https://stackoverflow.com/questions/39662365/knit-one-markdown-file-to-two-output-files/53280491#53280491
 knit: (function(inputFile, encoding) {
   rmarkdown::render(inputFile, encoding = encoding,
-                    output_format = "all",
                     output_dir = "results") })
 # And:
 # https://stackoverflow.com/a/46007686/10647267
 
-bibliography: scholar.bib
+#bibliography: scholar.bib
 ---
   
 ```{r setup, include=FALSE}
@@ -25,7 +24,8 @@ bibliography: scholar.bib
 knitr::opts_chunk$set(echo = FALSE,
                       message = FALSE,
                       warning = FALSE,
-                      fig.align = "center")
+                      fig.align = "center",
+                      cache = TRUE)
 ```
 
 ```{r libraries, include=FALSE}
@@ -33,7 +33,7 @@ knitr::opts_chunk$set(echo = FALSE,
 library(knitr)
 ```
 
-```{r create directory structure}
+```{r create directory structure, results='hide'}
 # directories <- c("data", "results", "intermediateData")
 directories <- c("results/", "intermediateData/")
 
@@ -93,15 +93,9 @@ El set de datos para este informe proviene del fichero "`r csv_files`".
 
 ```{r structure of the data}
 # Read dataset into a data frame and check its structure
-# raw_dataframe <- read.csv2(
-#   file.path("data", csv_files),
-#   stringsAsFactors = FALSE)
-
-# Read dataset from working directory
-raw_dataframe <- read.csv2(csv_files,
-                           stringsAsFactors = FALSE)
-
-raw_dataframe$label <- as.factor(raw_dataframe$label)
+raw_dataframe <- read.csv(
+  file.path("data", csv_files),
+  stringsAsFactors = TRUE)
 
 observaciones <- nrow(raw_dataframe)
 variables <- ncol(raw_dataframe)
@@ -109,9 +103,11 @@ variables <- ncol(raw_dataframe)
 ```
 
 El dataset está compuesto por:  
-**`r observaciones` observaciones**, de cada una de las cuales se han obtenido  
+**`r format(observaciones, big.mark = " ")` observaciones**, de cada una de las cuales se han medido  
 **`r variables` variables**.
 
+## Muestra de los datos de las diferentes variables
 ```{r variables}
-str(raw_dataframe)
+str(raw_dataframe,
+    vec.len = 2)
 ```

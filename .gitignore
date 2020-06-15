@@ -8,3 +8,7 @@ data/
 results/
 intermediateData/
 images/
+*_cache/
+
+[files]
+Rplots.pdf
