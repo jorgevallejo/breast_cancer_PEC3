@@ -38,11 +38,8 @@ library(knitr)
 directories <- c("results/", "intermediateData/")
 
 # Create directories
-for (i in directories){
-  if (!(dir.exists(i))){
-    dir.create(i)
-  }
-}
+sapply(directories[!(dir.exists(directories))], # Directories that doesn't exist
+       dir.create) # Create those directories
 ```
 
 ```{r delete results files, eval= FALSE}
@@ -59,4 +56,59 @@ file.remove(
            full.names = TRUE,
            recursive = TRUE)
 )
+```
+
+\newpage
+
+# Análisis exploratorio
+```{r check the existence of data file in working folder}
+
+# Because it has been asked not to associate data file with a fixed path
+
+# The file with the dataset must be in 
+# the same directory than the code we are going to run
+
+# Check how many files (if any) are in working directory with format csv
+csv_files <- list.files(path = "./", pattern = "csv")
+
+if (length(csv_files) < 1){
+  stop("No se ha encontrado en el directorio
+       ningún archivo con extensión csv.
+       Para el uso de este informe es necesario
+       que el dataset esté en forma de fichero csv (y con extensión '.csv')
+       en el directorio de trabajo.")
+}else if (length(csv_files) > 1){
+  stop("Demasiados archivos con extensión '.csv' en el directorio.
+       Para el uso de este informe es necesario 
+       que el dataset esté en forma de un único fichero csv 
+       (y con extensión '.csv') en el directorio de trabajo.")
+}
+
+```
+
+El set de datos para este informe proviene del fichero "`r csv_files`".
+
+```{r structure of the data}
+# Read dataset into a data frame and check its structure
+# raw_dataframe <- read.csv2(
+#   file.path("data", csv_files),
+#   stringsAsFactors = FALSE)
+
+# Read dataset from working directory
+raw_dataframe <- read.csv2(csv_files,
+                           stringsAsFactors = FALSE)
+
+raw_dataframe$label <- as.factor(raw_dataframe$label)
+
+observaciones <- nrow(raw_dataframe)
+variables <- ncol(raw_dataframe)
+
+```
+
+El dataset está compuesto por:  
+**`r observaciones` observaciones**, de cada una de las cuales se han obtenido  
+**`r variables` variables**.
+
+```{r variables}
+str(raw_dataframe)
 ```
