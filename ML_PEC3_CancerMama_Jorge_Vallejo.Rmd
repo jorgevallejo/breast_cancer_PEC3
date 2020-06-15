@@ -61,27 +61,30 @@ file.remove(
 \newpage
 
 # Análisis exploratorio
-```{r check the existence of data file in working folder}
+```{r check the existence of data file in data folder}
 
-# Because it has been asked not to associate data file with a fixed path
+# The file with the dataset must be in a directory called "data"
+# placed in the same directory of the code we are going to run
 
-# The file with the dataset must be in 
-# the same directory than the code we are going to run
+if (! dir.exists("./data")) {
+  stop("El directorio ./data no existe.
+       El dataset debe estar en el directorio ./data para generar el reporte.")
+}
 
-# Check how many files (if any) are in working directory with format csv
-csv_files <- list.files(path = "./", pattern = "csv")
+# Check how many files (if any) are in data directory with format csv
+csv_files <- list.files(path = "./data", pattern = "csv")
 
 if (length(csv_files) < 1){
-  stop("No se ha encontrado en el directorio
+  stop("No se ha encontrado en el directorio './data'
        ningún archivo con extensión csv.
-       Para el uso de este informe es necesario
+       Para el uso de este informe automático es necesario
        que el dataset esté en forma de fichero csv (y con extensión '.csv')
-       en el directorio de trabajo.")
+       en el directorio '.data/'")
 }else if (length(csv_files) > 1){
-  stop("Demasiados archivos con extensión '.csv' en el directorio.
-       Para el uso de este informe es necesario 
+  stop("Demasiados archivos con extensión '.csv' en el directorio './data'.
+       Para el uso de este informe automático es necesario 
        que el dataset esté en forma de un único fichero csv 
-       (y con extensión '.csv') en el directorio de trabajo.")
+       (y con extensión '.csv') en el directorio '.data/'")
 }
 
 ```

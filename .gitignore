@@ -2,3 +2,9 @@
 .Rhistory
 .RData
 .Ruserdata
+
+[directorios]
+data/
+results/
+intermediateData/
+images/
