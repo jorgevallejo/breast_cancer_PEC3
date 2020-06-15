@@ -1,0 +1,62 @@
+---
+  title: "Cáncer de mama"
+subtitle: "Machine Learning - PEC 3"
+author: "Jorge Vallejo Ortega"
+date: '`r format(Sys.Date(),"%e de %B, %Y")`'
+output:
+  pdf_document:
+  number_sections: true
+header-includes:
+  - \renewcommand{\contentsname}{Sumario}
+toc: true
+# Next code for knitting more than one type of document automatically comes from https://stackoverflow.com/questions/39662365/knit-one-markdown-file-to-two-output-files/53280491#53280491
+knit: (function(inputFile, encoding) {
+  rmarkdown::render(inputFile, encoding = encoding,
+                    output_format = "all",
+                    output_dir = "results") })
+# And:
+# https://stackoverflow.com/a/46007686/10647267
+
+bibliography: scholar.bib
+---
+  
+```{r setup, include=FALSE}
+# knitr options
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      fig.align = "center")
+```
+
+```{r libraries, include=FALSE}
+# Load packages
+library(knitr)
+```
+
+```{r create directory structure}
+# directories <- c("data", "results", "intermediateData")
+directories <- c("results/", "intermediateData/")
+
+# Create directories
+for (i in directories){
+  if (!(dir.exists(i))){
+    dir.create(i)
+  }
+}
+```
+
+```{r delete results files, eval= FALSE}
+# Run this chunk ONLY if you want to re-do
+# all the report FROM ZERO.
+# Remember that the .RData files are there to
+# avoid unnecesarily redoing long data processing.
+
+file.remove(
+  # Create a character vector of relative paths
+  # to all files in the variable directories
+  list.files(path = directories,
+           all.files = TRUE,
+           full.names = TRUE,
+           recursive = TRUE)
+)
+```
