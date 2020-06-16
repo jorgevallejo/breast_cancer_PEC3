@@ -58,6 +58,15 @@ file.remove(
 )
 ```
 
+```{r functions}
+# This chunk is for user defined functions
+
+# Find the span of a range
+# From https://r.789695.n4.nabble.com/Calculate-Range-td4680579.html
+range_span <- function(x, na.rm=TRUE) return(diff(range(x)))
+```
+
+
 \newpage
 
 # Análisis exploratorio
@@ -121,7 +130,37 @@ knitr::kable(table(unlist(lapply(raw_dataframe, class))),
 
 ## Otras características de interés
 ```{r NAs y rangos en una tabla}
+# Data frame except first and last columns
+raw_dataframe_num <- raw_dataframe[, -c(1, # all columns except the first
+                                        ncol(raw_dataframe))] # and last
 
+# Rangos de variable
+rangos_variable <- apply(raw_dataframe_num,
+                         2,
+                         range, na.rm = TRUE)
+
+# Extensiones de rango
+ex_ra <- apply(
+    raw_dataframe_num,
+2,
+range_span,
+na.rm = TRUE)
+
+# Variables with largest and tiniest ranges
+r_l <- which(ex_ra == max(ex_ra))
+r_t <- which(ex_ra == min(ex_ra))
+
+knitr::kable(cbind(
+c("Valores perdidos (NAs)", "Variable de mayor rango", "Variable de menor rango"),
+c(sum(is.na(raw_dataframe)), # total NAs in data frame
+  # Maximum range in variables
+  paste0(colnames(raw_dataframe_num)[r_l],
+         " (", rangos_variable[, r_l][1], " - ",rangos_variable[, r_l][2], " )"),
+# Minimum range in variables
+paste0(colnames(raw_dataframe_num)[r_t],
+       " (", rangos_variable[, r_t][1], " - ",rangos_variable[, r_t][2], " )")
+)),
+align = 'rl')
 ```
 
 
