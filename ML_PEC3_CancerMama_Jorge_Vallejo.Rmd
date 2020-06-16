@@ -1,5 +1,5 @@
 ---
-  title: "Cáncer de mama"
+title: "Cáncer de mama"
 subtitle: "Machine Learning - PEC 3"
 author: "Jorge Vallejo Ortega"
 date: '`r format(Sys.Date(),"%e de %B, %Y")`'
@@ -12,12 +12,11 @@ toc: true
 # Next code for knitting more than one type of document automatically comes from https://stackoverflow.com/questions/39662365/knit-one-markdown-file-to-two-output-files/53280491#53280491
 knit: (function(inputFile, encoding) {
   rmarkdown::render(inputFile, encoding = encoding,
-                    output_format = "all",
                     output_dir = "results") })
 # And:
 # https://stackoverflow.com/a/46007686/10647267
 
-bibliography: scholar.bib
+#bibliography: scholar.bib
 ---
   
 ```{r setup, include=FALSE}
@@ -25,7 +24,8 @@ bibliography: scholar.bib
 knitr::opts_chunk$set(echo = FALSE,
                       message = FALSE,
                       warning = FALSE,
-                      fig.align = "center")
+                      fig.align = "center",
+                      cache = TRUE)
 ```
 
 ```{r libraries, include=FALSE}
@@ -33,16 +33,13 @@ knitr::opts_chunk$set(echo = FALSE,
 library(knitr)
 ```
 
-```{r create directory structure}
+```{r create directory structure, results='hide'}
 # directories <- c("data", "results", "intermediateData")
 directories <- c("results/", "intermediateData/")
 
 # Create directories
-for (i in directories){
-  if (!(dir.exists(i))){
-    dir.create(i)
-  }
-}
+sapply(directories[!(dir.exists(directories))], # Directories that doesn't exist
+       dir.create) # Create those directories
 ```
 
 ```{r delete results files, eval= FALSE}
@@ -60,3 +57,110 @@ file.remove(
            recursive = TRUE)
 )
 ```
+
+```{r functions}
+# This chunk is for user defined functions
+
+# Find the span of a range
+# From https://r.789695.n4.nabble.com/Calculate-Range-td4680579.html
+range_span <- function(x, na.rm=TRUE) return(diff(range(x)))
+```
+
+
+\newpage
+
+# Análisis exploratorio
+```{r check the existence of data file in data folder}
+
+# The file with the dataset must be in a directory called "data"
+# placed in the same directory of the code we are going to run
+
+if (! dir.exists("./data")) {
+  stop("El directorio ./data no existe.
+       El dataset debe estar en el directorio ./data para generar el reporte.")
+}
+
+# Check how many files (if any) are in data directory with format csv
+csv_files <- list.files(path = "./data", pattern = "csv")
+
+if (length(csv_files) < 1){
+  stop("No se ha encontrado en el directorio './data'
+       ningún archivo con extensión csv.
+       Para el uso de este informe automático es necesario
+       que el dataset esté en forma de fichero csv (y con extensión '.csv')
+       en el directorio '.data/'")
+}else if (length(csv_files) > 1){
+  stop("Demasiados archivos con extensión '.csv' en el directorio './data'.
+       Para el uso de este informe automático es necesario 
+       que el dataset esté en forma de un único fichero csv 
+       (y con extensión '.csv') en el directorio '.data/'")
+}
+
+```
+
+El set de datos para este informe proviene del fichero "`r csv_files`".
+
+```{r structure of the data}
+# Read dataset into a data frame and check its structure
+raw_dataframe <- read.csv(
+  file.path("data", csv_files),
+  stringsAsFactors = TRUE)
+
+observaciones <- nrow(raw_dataframe)
+variables <- ncol(raw_dataframe)
+
+```
+
+El dataset está compuesto por:  
+**`r format(observaciones, big.mark = " ")` observaciones**, de cada una de las cuales se han medido  
+**`r variables` variables**.
+
+## Muestra de los datos de las diferentes variables
+```{r variables}
+str(raw_dataframe,
+    vec.len = 2)
+```
+
+## Tipos de variables
+```{r class of variables, fig.align='left'}
+knitr::kable(table(unlist(lapply(raw_dataframe, class))),
+             col.names = c("Clase", "Frecuencia"),
+             caption = '')
+```
+
+## Otras características de interés
+```{r NAs y rangos en una tabla}
+# Data frame except first and last columns
+raw_dataframe_num <- raw_dataframe[, -c(1, # all columns except the first
+                                        ncol(raw_dataframe))] # and last
+
+# Rangos de variable
+rangos_variable <- apply(raw_dataframe_num,
+                         2,
+                         range, na.rm = TRUE)
+
+# Extensiones de rango
+ex_ra <- apply(
+    raw_dataframe_num,
+2,
+range_span,
+na.rm = TRUE)
+
+# Variables with largest and tiniest ranges
+r_l <- which(ex_ra == max(ex_ra))
+r_t <- which(ex_ra == min(ex_ra))
+
+knitr::kable(cbind(
+c("Valores perdidos (NAs)", "Variable de mayor rango", "Variable de menor rango"),
+c(sum(is.na(raw_dataframe)), # total NAs in data frame
+  # Maximum range in variables
+  paste0(colnames(raw_dataframe_num)[r_l],
+         " (", rangos_variable[, r_l][1], " - ",rangos_variable[, r_l][2], " )"),
+# Minimum range in variables
+paste0(colnames(raw_dataframe_num)[r_t],
+       " (", rangos_variable[, r_t][1], " - ",rangos_variable[, r_t][2], " )")
+)),
+align = 'rl')
+```
+
+
