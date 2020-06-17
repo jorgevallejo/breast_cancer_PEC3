@@ -326,6 +326,7 @@ legend("topright", # Position of the legend in the graph
 
 
 ```
+\newpage
 
 ## Entrenamiento del clasificador kNN
 Para entrenar el algoritmo k-NN he usado el subset de datos de entrenamiento, que será remuestreado a su vez mediante el método de validación cruzada de 10 iteraciones.
@@ -355,7 +356,7 @@ fit_knn <- caret::train(diagnosis ~ ., # formula diagnosis = predictors (linear)
 ```
 
 ## Modelo óptimo para el algoritmo k-NN
-Como podemos ver en la tabla, según el set de datos de entrenamiento que hemos aportado al logaritmo, **el modelo con la mejor puntuación UAC es el que tiene en cuenta los `r fit_knn$bestTune[[1]]` vecinos más cercanos**.
+Como podemos ver en la tabla 3, según el set de datos de entrenamiento que hemos aportado al logaritmo, **el modelo con la mejor puntuación UAC es el que tiene en cuenta los `r fit_knn$bestTune[[1]]` vecinos más cercanos**.
 
 ```{r create dataframe with evaluation values, results='asis'}
 # Recupera los parametros de interes
@@ -364,8 +365,50 @@ kable(knn_evaluation <- fit_knn$results[c(1, 3)],
       caption = 'Valores AUC según el número k de vecinos cercanos; calculado para el set de datos de entrenamiento.')
 
 ```
+\newpage
+
+## Evaluación del modelo kNN
+
+```{r kNN make predictions on testing dataset, results='hide'}
+# Subset de evaluacion
+test_z_score <- z_dataframe[-training_rows, -1]
+
+knn_predictions <- predict(fit_knn, test_z_score)
+
+# head(knn_predictions)
+```
+
+Si examinamos el resultado de la predicción con el subset de datos de evaluación, a través de una matriz de confusión obtenemos los siguientes valores:
+
+```{r confusion matrix for kNN, message=FALSE, fig.cap='Matriz de confusión. B = diagnóstico benigno, M = diagnóstico maligno (positivo).'}
+# We set interaction as the positive
+kNN_matrix <- caret::confusionMatrix(knn_predictions,
+                test_z_score$diagnosis,
+                positive = "M")
+
+# Print confusion matrix
+library(pander)
+pander::pander(ftable(kNN_matrix$table))
+```
 
 
+```{r kNN create dataframe with evaluation values, results='asis'}
+# Recupera los parametros de interes y crea una tabla
+library(ROCR)
+
+# Calculate UAC
+# kNN_uac <- performance(
+#   prediction(as.character(knn_predictions), as.character(test_z_score$diagnosis),
+#              label.ordering = c("B", "M")), # make object prediction
+#   measure = "auc")
+
+knitr::kable(as.data.frame(kNN_matrix$byClass[c(1, 2, 5)],
+                       row.names = c("Sensibilidad", "Especificidad", "Precisión")),
+             col.names = c("Valor del parámetro"),
+             align = 'c',
+             caption = 'Parámetros de interés al aplicar el modelo al set de datos de evaluación.'
+             )
+```
 
 \newpage
 
