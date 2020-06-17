@@ -378,3 +378,7 @@ El documento original en formato .Rmd, que incluye el código completo en lengua
 ```{r session_info, include=TRUE, echo=TRUE, results='markup'}
 sessionInfo() # For better reproducibility
 ```
+
+# Apéndice C: Nota para el profesor
+
+No me he equivocado de archivo, esto es lo único que me ha dado tiempo a terminar. Lo he entregado incompleto para que por lo menos no se un 'no presentado'.
