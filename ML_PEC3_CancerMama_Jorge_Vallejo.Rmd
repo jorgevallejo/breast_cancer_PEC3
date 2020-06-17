@@ -242,10 +242,6 @@ log_boxplot(list(ex_ra_ben, ex_ra_mal),
 
 ## Pre-procesado
 
-Antes de analizar el set de datos con los algoritmos de aprendizaje automático, primero es necesario  repartir los datos para generar grupos de entrenamiento y de evaluación. En esta caso he decidido dividr el set al azar en un grupo de entrenamiento (2/3 de las observaciones), y un grupo de evaluación (1/3 de las observaciones).
-
-El muestreo para formar los grupos está estratificado por la variable _diganosis_, para mantener la misma proporción de diagnósticos tanto en el grupo de entrenamiento como en el de evaluación.
-
 ```{r separa sets entrenamiento y prueba}
 library(caret)
 # Observations by subset
@@ -259,6 +255,10 @@ training_rows <- createDataPartition(raw_dataframe$diagnosis, p = training_ratio
 training_dataframe <- raw_dataframe[training_rows, ]
 test_dataframe <- raw_dataframe[-training_rows, ]
 ```
+
+Antes de analizar el set de datos con los algoritmos de aprendizaje automático, primero es necesario  repartir los datos para generar grupos de entrenamiento y de evaluación. En esta caso he decidido dividr el set al azar en un grupo de entrenamiento (`r paste0(training_ratio * 100, "%")` de las observaciones), y un grupo de evaluación ((`r paste0((1-training_ratio) * 100, "%")` de las observaciones).
+
+El muestreo para formar los grupos está estratificado por la variable _diganosis_, para mantener la misma proporción de diagnósticos tanto en el grupo de entrenamiento como en el de evaluación.
 
 ```{r tabla resumen sets}
 train <- nrow(training_dataframe)
@@ -291,6 +291,7 @@ knitr::kable(resumen,
 \newpage
 
 # Predicción mediante k-Nearest Neighbour
+## Estandarización de los datos
 El algoritmo k-NN es sensible a diferencias en el tamaño de los rangos de las diferentes variables numéricas. Para evitar que estas diferencias introduzcan un sesgo en la clasificación modificaremos los datos de las variables como parte del pre-procesado. En este caso en concreto hemos usado la **estandarización por z-score**. Hemos de ser conscientes que, al utilizar este método, de estandarización estamos asumiendo que los datos sobre los que usaremos el algoritmo en el futuro tendrán la misma media y desviación estándar que el set de datos que usamos como entrenamiento.
 
 ```{r z score stardardization}
@@ -331,24 +332,49 @@ Para entrenar el algoritmo k-NN he usado el subset de datos de entrenamiento, qu
 
 Para afinar el modelo he usado la función `trainControl()` del paquete de R `caret`.
 
+He elegido el área bajo la curva ROC (AUC, por sus siglas en inglés) como métrica para elegir el modelo óptimo, ya que ofrece un equilibrio entre la capacidad de detectar positivos auténticos, y la de evitar falsos positivos.
+
 ```{r entrenamiento knn}
 # Subset de entrenamiento (datos estandarizados)
 training_z_score <- z_dataframe[training_rows, -1]
 
 set.seed(2020617119)
 # Training parameters
-train_knn <- trainControl(method = 'repeatedcv', number = 10)
+train_knn <- trainControl(method = 'repeatedcv', 
+                          number = 10, # number of folds
+                          summaryFunction = multiClassSummary, # Computes AUC
+                          classProbs = TRUE)
+
 # Fit predictive model over tuning paremeters
 fit_knn <- caret::train(diagnosis ~ ., # formula diagnosis = predictors (linear)
                         data = training_z_score,
                         method = 'knn',
                         trControl = train_knn,
+                        metric = 'AUC', # Metric for the optimal model
                         tuneLength = 10) # Levels of tuning parameter (k)
 ```
 
+## Modelo óptimo para el algoritmo k-NN
+Como podemos ver en la tabla, según el set de datos de entrenamiento que hemos aportado al logaritmo, **el modelo con la mejor puntuación UAC es el que tiene en cuenta los `r fit_knn$bestTune[[1]]` vecinos más cercanos**.
+
+```{r create dataframe with evaluation values, results='asis'}
+# Recupera los parametros de interes
+kable(knn_evaluation <- fit_knn$results[c(1, 3)],
+      format.args = list(digits = 4),
+      caption = 'Valores AUC según el número k de vecinos cercanos; calculado para el set de datos de entrenamiento.')
+
+```
+
+
 
 \newpage
-# Apéndice A: Reproducibilidad
+
+# Apéndice A: Código
+
+El documento original en formato .Rmd, que incluye el código completo en lenguaje R usado para generar este informe, se puede consultar y descargar en el siguiente repositorio de Github:
+[jorgevallejo/breast_cancer_PEC3](https://github.com/jorgevallejo/breast_cancer_PEC3)
+
+# Apéndice B: Reproducibilidad
 ```{r session_info, include=TRUE, echo=TRUE, results='markup'}
 sessionInfo() # For better reproducibility
 ```
