@@ -61,9 +61,37 @@ file.remove(
 ```{r functions}
 # This chunk is for user defined functions
 
+##########################
 # Find the span of a range
 # From https://r.789695.n4.nabble.com/Calculate-Range-td4680579.html
 range_span <- function(x, na.rm=TRUE) return(diff(range(x)))
+
+
+##########################
+# Draw a boxplot with log-distanced ticks
+# Adapted from code I found in StackOverflow (but I can't find the url anymore)
+log_boxplot <- function(x, ...){
+  # To avoid problems with the logarithm of 0, let's change the value 0 by value 1.
+  # x[x == 0] <- 1
+
+  boxplot(x,
+        log = "y",
+        yaxt = "n",  # Do not draw ticks in y axis.
+        ...) # Additional arguments to be passed to the function boxplot.
+
+# Establishes limits for y axis and, from base 10 logarithm,
+# max and min values of the dataframe.
+  y1 <- floor(log10(range(x, na.rm = TRUE))) 
+# Vector with integer values from minimum to maximum for the axis.
+  pow <- seq(y1[1], y1[2]+1)
+# Vector with ticks' positions.
+  ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
+# Drawing the axis (main ticks)
+  axis(2, 10^pow, labels = formatC(10^pow, digits = 0, format = "d"),
+       gap.axis = 0.5)
+# Drawing the axis (secondary ticks)
+  axis(2, ticksat, labels = NA, tcl = -0.25, lwd = 0, lwd.ticks = 1)
+}
 ```
 
 
@@ -108,6 +136,9 @@ raw_dataframe <- read.csv(
 
 observaciones <- nrow(raw_dataframe)
 variables <- ncol(raw_dataframe)
+# Number of levels in the last column of the dataframe
+diag_levels <- levels(raw_dataframe[, ncol(raw_dataframe)])
+clases <- length(diag_levels)
 
 ```
 
@@ -115,11 +146,23 @@ El dataset está compuesto por:
 **`r format(observaciones, big.mark = " ")` observaciones**, de cada una de las cuales se han medido  
 **`r variables` variables**.
 
+El conjunto de observaciones está dividido en **`r clases` clases**: `r diag_levels`.
+
+La distribución de cada clase es la siguiente:
+
+```{r}
+kable(table(raw_dataframe[, ncol(raw_dataframe)]),
+      col.names = c("Clase", "Frecuencia"),
+      align = c('c','l'),
+      format.args = list(big.mark = " "))
+```
+
 ## Muestra de los datos de las diferentes variables
 ```{r variables}
 str(raw_dataframe,
     vec.len = 2)
 ```
+\newpage
 
 ## Tipos de variables
 ```{r class of variables, fig.align='left'}
@@ -161,6 +204,49 @@ paste0(colnames(raw_dataframe_num)[r_t],
        " (", rangos_variable[, r_t][1], " - ",rangos_variable[, r_t][2], " )")
 )),
 align = 'rl')
+
+# Desviaciones típicas de las variables
+ variables_sd <- apply(raw_dataframe_num, 2, sd)
+```
+## Distribución de rangos entre las variables
+
+```{r calcula la extensión del rango de cada variable}
+ex_ra_ben <- apply(raw_dataframe_num[raw_dataframe$diagnosis == "B", ],
+                   2, range_span)
+ex_ra_mal <- apply(raw_dataframe_num[raw_dataframe$diagnosis == "M", ],
+                   2, range_span)
+
+```
+
+```{r calcula la desviación típica de cada variable, eval=FALSE}
+sd_ben <- apply(raw_dataframe_num[raw_dataframe$diagnosis == "B", ],
+                   2, sd)
+sd_mal <- apply(raw_dataframe_num[raw_dataframe$diagnosis == "M", ],
+                   2, sd)
+```
+
+```{r variable ranges boxplot, fig.height=6, fig.width=5}
+# par(mfcol = c(1, 2))
+log_boxplot(list(ex_ra_ben, ex_ra_mal),
+            main = "Distribución de la extensión\n de rangos en las variables",
+            names = c("Benigno", "Maligno"),
+            ylab = "Tamaño del rango",
+            col = c("aliceblue", "lightgoldenrod1"))
+
+# log_boxplot(list(sd_ben, sd_mal),
+#             main = "Distribución de la desviación\n típica en las variables",
+#             names = c("Benigno", "Maligno"),
+#             ylab = "Tamaño del rango",
+#             col = c("aliceblue", "lightgoldenrod1"))
+```
+
+
+
+# Predicción mediante k-Nearest Neighbour
+El algoritmo k-NN es sensible a diferencias en el tamaño de los rangos de las diferentes variables numéricas. Para evitar que estas diferencias introduzcan un sesgo en la clasificación modificaremos los datos de las variables como parte del pre-procesado. En este caso en concreto hemos usado la **estandarización por z-score**. Hemos de ser conscientes que, al utilizar este método, de estandarización estamos asumiendo que los datos sobre los que usaremos el algoritmo en el futuro tendrán la misma media y desviación estándar que el set de datos que usamos como entrenamiento.
+
+```{r z score stardardization}
+
 ```
 
 
