@@ -2,3 +2,14 @@
 .Rhistory
 .RData
 .Ruserdata
+
+[directorios]
+# data/
+results/
+intermediateData/
+images/
+*_cache/
+
+[files]
+Rplots.pdf
+*.zip
