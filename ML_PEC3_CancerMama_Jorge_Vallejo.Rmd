@@ -225,7 +225,7 @@ sd_mal <- apply(raw_dataframe_num[raw_dataframe$diagnosis == "M", ],
                    2, sd)
 ```
 
-```{r variable ranges boxplot, fig.height=6, fig.width=5, out.width='50%'}
+```{r variable ranges boxplot, fig.height=6, fig.width=5, out.width='50%', fig.cap='La extensión de los rangos varía mucho de unas variables a otras, pero su distribución es comparable entre los dos diagnósticos (benigno y maligno).'}
 # par(mfcol = c(1, 2))
 log_boxplot(list(ex_ra_ben, ex_ra_mal),
             main = "Distribución de la extensión\n de rangos en las variables",
@@ -294,8 +294,58 @@ knitr::kable(resumen,
 El algoritmo k-NN es sensible a diferencias en el tamaño de los rangos de las diferentes variables numéricas. Para evitar que estas diferencias introduzcan un sesgo en la clasificación modificaremos los datos de las variables como parte del pre-procesado. En este caso en concreto hemos usado la **estandarización por z-score**. Hemos de ser conscientes que, al utilizar este método, de estandarización estamos asumiendo que los datos sobre los que usaremos el algoritmo en el futuro tendrán la misma media y desviación estándar que el set de datos que usamos como entrenamiento.
 
 ```{r z score stardardization}
+z_dataframe <- predict(
+  preProcess(raw_dataframe_num, method = c("center","scale")), # "learning" to transform
+  raw_dataframe) # data to be transformed
+             
+```
+
+```{r calcula la extensión del rango de cada variable tras z-score}
+ex_ra_benz <- apply(z_dataframe[z_dataframe$diagnosis == "B", -c(1, ncol(z_dataframe))],
+                   2, range_span)
+ex_ra_malz <- apply(z_dataframe[z_dataframe$diagnosis == "M", -c(1, ncol(z_dataframe))],
+                   2, range_span)
 
 ```
+
+```{r variable ranges boxplot after z-score, fig.height=6, fig.width=5, out.width='50%', fig.cap='Tras la estandarización mediante z-score la extensión de los rangos es mucho más homogénea entre las variables.'}
+log_boxplot(list(ex_ra_ben, ex_ra_mal,
+                 ex_ra_benz, ex_ra_malz),
+            main = "Distribución de la extensión\n de rangos en las variables",
+            names = rep(c("Benigno", "Maligno"), 2),
+            ylab = "Tamaño del rango",
+            col = c(rep("aliceblue", 2), rep("lightgoldenrod1", 2)))
+# Legend
+legend("topright", # Position of the legend in the graph
+       legend = c("Datos brutos", "Datos estandarizados"),
+       fill = c("aliceblue", "lightgoldenrod1"), # Colors of the boxes
+       border = NA, # Do not draw a box around the colors
+       bty = 'n', # Do not draw a box around the legend
+       cex = 0.75) # Size of the characters
+
+
+```
+
+## Entrenamiento del clasificador kNN
+Para entrenar el algoritmo k-NN he usado el subset de datos de entrenamiento, que será remuestreado a su vez mediante el método de validación cruzada de 10 iteraciones.
+
+Para afinar el modelo he usado la función `trainControl()` del paquete de R `caret`.
+
+```{r entrenamiento knn}
+# Subset de entrenamiento (datos estandarizados)
+training_z_score <- z_dataframe[training_rows, -1]
+
+set.seed(2020617119)
+# Training parameters
+train_knn <- trainControl(method = 'repeatedcv', number = 10)
+# Fit predictive model over tuning paremeters
+fit_knn <- caret::train(diagnosis ~ ., # formula diagnosis = predictors (linear)
+                        data = training_z_score,
+                        method = 'knn',
+                        trControl = train_knn,
+                        tuneLength = 10) # Levels of tuning parameter (k)
+```
+
 
 \newpage
 # Apéndice A: Reproducibilidad
