@@ -4,7 +4,7 @@
 .Ruserdata
 
 [directorios]
-data/
+# data/
 results/
 intermediateData/
 images/
@@ -12,3 +12,4 @@ images/
 
 [files]
 Rplots.pdf
+*.zip

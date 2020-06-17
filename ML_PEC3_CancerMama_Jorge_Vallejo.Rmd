@@ -225,7 +225,7 @@ sd_mal <- apply(raw_dataframe_num[raw_dataframe$diagnosis == "M", ],
                    2, sd)
 ```
 
-```{r variable ranges boxplot, fig.height=6, fig.width=5}
+```{r variable ranges boxplot, fig.height=6, fig.width=5, out.width='50%', fig.cap='La extensión de los rangos varía mucho de unas variables a otras, pero su distribución es comparable entre los dos diagnósticos (benigno y maligno).'}
 # par(mfcol = c(1, 2))
 log_boxplot(list(ex_ra_ben, ex_ra_mal),
             main = "Distribución de la extensión\n de rangos en las variables",
@@ -240,13 +240,188 @@ log_boxplot(list(ex_ra_ben, ex_ra_mal),
 #             col = c("aliceblue", "lightgoldenrod1"))
 ```
 
+## Pre-procesado
 
+```{r separa sets entrenamiento y prueba}
+library(caret)
+# Observations by subset
+training_ratio <- 0.67 # Ratio of samples in the training subset
+
+set.seed(12345)
+# Reordered row numbers
+training_rows <- createDataPartition(raw_dataframe$diagnosis, p = training_ratio,
+                                     list = FALSE)
+# Subset the dataframe
+training_dataframe <- raw_dataframe[training_rows, ]
+test_dataframe <- raw_dataframe[-training_rows, ]
+```
+
+Antes de analizar el set de datos con los algoritmos de aprendizaje automático, primero es necesario  repartir los datos para generar grupos de entrenamiento y de evaluación. En esta caso he decidido dividr el set al azar en un grupo de entrenamiento (`r paste0(training_ratio * 100, "%")` de las observaciones), y un grupo de evaluación ((`r paste0((1-training_ratio) * 100, "%")` de las observaciones).
+
+El muestreo para formar los grupos está estratificado por la variable _diganosis_, para mantener la misma proporción de diagnósticos tanto en el grupo de entrenamiento como en el de evaluación.
+
+```{r tabla resumen sets}
+train <- nrow(training_dataframe)
+test <- nrow(test_dataframe)
+
+resumen <- data.frame(
+  cbind(
+  # Sizes of subsets
+  c(train,# Training size
+  test), # Test size
+  # Ratio of benign diagnosis each subset
+  c(sum(training_dataframe$diagnosis == "B") / train,
+    sum(test_dataframe$diagnosis == "B") / test),
+  # Ratio of malign diagnosis each subset
+  c(sum(training_dataframe$diagnosis == "M") / train,
+    sum(test_dataframe$diagnosis == "M") / test)),
+  row.names = c("Entrenamiento", "Evaluación")
+)
+
+# Design table
+knitr::kable(resumen,
+             col.names = c("Observaciones", "Ratio benigno", "Ratio maligno"),
+             format.args = list(digits = 2),
+             align = 'c',
+             caption = 'Comparación entre los sets de entrenamiento y evaluación de los siguientes elementos: observaciones, tasa de observaciones con diagnóstico benigno, y tasa de observaciones con diagnóstico maligno.'
+)
+
+
+```
+\newpage
 
 # Predicción mediante k-Nearest Neighbour
+## Estandarización de los datos
 El algoritmo k-NN es sensible a diferencias en el tamaño de los rangos de las diferentes variables numéricas. Para evitar que estas diferencias introduzcan un sesgo en la clasificación modificaremos los datos de las variables como parte del pre-procesado. En este caso en concreto hemos usado la **estandarización por z-score**. Hemos de ser conscientes que, al utilizar este método, de estandarización estamos asumiendo que los datos sobre los que usaremos el algoritmo en el futuro tendrán la misma media y desviación estándar que el set de datos que usamos como entrenamiento.
 
 ```{r z score stardardization}
+z_dataframe <- predict(
+  preProcess(raw_dataframe_num, method = c("center","scale")), # "learning" to transform
+  raw_dataframe) # data to be transformed
+             
+```
+
+```{r calcula la extensión del rango de cada variable tras z-score}
+ex_ra_benz <- apply(z_dataframe[z_dataframe$diagnosis == "B", -c(1, ncol(z_dataframe))],
+                   2, range_span)
+ex_ra_malz <- apply(z_dataframe[z_dataframe$diagnosis == "M", -c(1, ncol(z_dataframe))],
+                   2, range_span)
 
 ```
 
+```{r variable ranges boxplot after z-score, fig.height=6, fig.width=5, out.width='50%', fig.cap='Tras la estandarización mediante z-score la extensión de los rangos es mucho más homogénea entre las variables.'}
+log_boxplot(list(ex_ra_ben, ex_ra_mal,
+                 ex_ra_benz, ex_ra_malz),
+            main = "Distribución de la extensión\n de rangos en las variables",
+            names = rep(c("Benigno", "Maligno"), 2),
+            ylab = "Tamaño del rango",
+            col = c(rep("aliceblue", 2), rep("lightgoldenrod1", 2)))
+# Legend
+legend("topright", # Position of the legend in the graph
+       legend = c("Datos brutos", "Datos estandarizados"),
+       fill = c("aliceblue", "lightgoldenrod1"), # Colors of the boxes
+       border = NA, # Do not draw a box around the colors
+       bty = 'n', # Do not draw a box around the legend
+       cex = 0.75) # Size of the characters
 
+
+```
+\newpage
+
+## Entrenamiento del clasificador kNN
+Para entrenar el algoritmo k-NN he usado el subset de datos de entrenamiento, que será remuestreado a su vez mediante el método de validación cruzada de 10 iteraciones.
+
+Para afinar el modelo he usado la función `trainControl()` del paquete de R `caret`.
+
+He elegido el área bajo la curva ROC (AUC, por sus siglas en inglés) como métrica para elegir el modelo óptimo, ya que ofrece un equilibrio entre la capacidad de detectar positivos auténticos, y la de evitar falsos positivos.
+
+```{r entrenamiento knn}
+# Subset de entrenamiento (datos estandarizados)
+training_z_score <- z_dataframe[training_rows, -1]
+
+set.seed(2020617119)
+# Training parameters
+train_knn <- trainControl(method = 'repeatedcv', 
+                          number = 10, # number of folds
+                          summaryFunction = multiClassSummary, # Computes AUC
+                          classProbs = TRUE)
+
+# Fit predictive model over tuning paremeters
+fit_knn <- caret::train(diagnosis ~ ., # formula diagnosis = predictors (linear)
+                        data = training_z_score,
+                        method = 'knn',
+                        trControl = train_knn,
+                        metric = 'AUC', # Metric for the optimal model
+                        tuneLength = 10) # Levels of tuning parameter (k)
+```
+
+## Modelo óptimo para el algoritmo k-NN
+Como podemos ver en la tabla 3, según el set de datos de entrenamiento que hemos aportado al logaritmo, **el modelo con la mejor puntuación UAC es el que tiene en cuenta los `r fit_knn$bestTune[[1]]` vecinos más cercanos**.
+
+```{r create dataframe with evaluation values, results='asis'}
+# Recupera los parametros de interes
+kable(knn_evaluation <- fit_knn$results[c(1, 3)],
+      format.args = list(digits = 4),
+      caption = 'Valores AUC según el número k de vecinos cercanos; calculado para el set de datos de entrenamiento.')
+
+```
+\newpage
+
+## Evaluación del modelo kNN
+
+```{r kNN make predictions on testing dataset, results='hide'}
+# Subset de evaluacion
+test_z_score <- z_dataframe[-training_rows, -1]
+
+knn_predictions <- predict(fit_knn, test_z_score)
+
+# head(knn_predictions)
+```
+
+Si examinamos el resultado de la predicción con el subset de datos de evaluación, a través de una matriz de confusión obtenemos los siguientes valores:
+
+```{r confusion matrix for kNN, message=FALSE, fig.cap='Matriz de confusión. B = diagnóstico benigno, M = diagnóstico maligno (positivo).'}
+# We set interaction as the positive
+kNN_matrix <- caret::confusionMatrix(knn_predictions,
+                test_z_score$diagnosis,
+                positive = "M")
+
+# Print confusion matrix
+library(pander)
+pander::pander(ftable(kNN_matrix$table))
+```
+
+
+```{r kNN create dataframe with evaluation values, results='asis'}
+# Recupera los parametros de interes y crea una tabla
+library(ROCR)
+
+# Calculate UAC
+# kNN_uac <- performance(
+#   prediction(as.character(knn_predictions), as.character(test_z_score$diagnosis),
+#              label.ordering = c("B", "M")), # make object prediction
+#   measure = "auc")
+
+knitr::kable(as.data.frame(kNN_matrix$byClass[c(1, 2, 5)],
+                       row.names = c("Sensibilidad", "Especificidad", "Precisión")),
+             col.names = c("Valor del parámetro"),
+             align = 'c',
+             caption = 'Parámetros de interés al aplicar el modelo al set de datos de evaluación.'
+             )
+```
+
+\newpage
+
+# Apéndice A: Código
+
+El documento original en formato .Rmd, que incluye el código completo en lenguaje R usado para generar este informe, se puede consultar y descargar en el siguiente repositorio de Github:
+[jorgevallejo/breast_cancer_PEC3](https://github.com/jorgevallejo/breast_cancer_PEC3)
+
+# Apéndice B: Reproducibilidad
+```{r session_info, include=TRUE, echo=TRUE, results='markup'}
+sessionInfo() # For better reproducibility
+```
+
+# Apéndice C: Nota para el profesor
+
+No me he equivocado de archivo, esto es lo único que me ha dado tiempo a terminar. Lo he entregado incompleto para que por lo menos no se un 'no presentado'.
